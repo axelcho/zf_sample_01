@@ -1,0 +1,244 @@
+<?php /** @var Zend\View\Renderer\PhpRenderer $this */ ?>
+<?php /** @var Smu\ViewModel\Search\Experience $model */ ?>
+<?php $this->placeHolder('headline')->set('Search By Experience'); ?>
+
+<input type="hidden" name="Latitude" value="" />
+<input type="hidden" name="Longitude" value="" />
+<input type="hidden" name="LocationCity" value="" />
+<input type="hidden" name="LocationArea" value="" />
+<input type="hidden" name="LocationPostal" value="" />
+<input type="hidden" name="LocationCountry" value="" />
+<input type="hidden" name="PositionID" id="PositionID" value="<?=$model->universalId?>" />
+<input type="hidden" name="Radius" id="Radius" value="30" />
+
+<div class="form-row">
+	<label for="Position">Position<span class="required">*</span></label>
+	<input class="form-inline-center" type="text" id="Position" name="Position" maxlength="64" size="64" value = '<?php echo $model->universalPosition?>' /><br />
+	<a href="javascript:void(0);" onclick="window.open('<?=$this->basePath('/positions')?>', 'positions', 'width=1000,height=500,scrollbars=yes');">View All Positions</a><br />
+	<div id="selected-position-found" class="form-inline-center form-inline-spacing" style="display: none;">
+		Selected Position:<br />
+		<img class="form-inline-center" src="<?=$this->basePath('/images/check.png')?>" alt="Title is OK!" />
+		<span class="form-inline-center"></span>
+	</div>
+</div>
+
+<div class="form-row left" style="text-align: center;">
+	<label style="margin-bottom: 6px;">Within</label>
+	<div class="radius-slider" style="width: 150px;"></div>
+	<div class="slider-value radius" style="margin-top: 4px;">30 mile(s)</div>
+</div>
+
+<div class="form-row left"><br />of</div>
+
+<div class="form-row left">
+	<div class="registration-location-search-title">
+		<label for="location-search">Location<span class="required">*</span></label>
+		Enter your location and click <span style="color: #FF0000;">SEARCH</span><br />
+	</div>
+	<div class="registration-location-search-arrow">
+		<img src="<?=$this->basePath('/images/registration-location-arrow.png')?>" alt="Arrow" />
+	</div><br style="clear: both;" />
+
+	<input type="text" class="location-search" id="location-search" style="margin: 2px 0 0 0;" /> <a class="green-button-small location-search-button"><span>Search</span></a> <a class="green-button-small location-clear-button"><span>Clear</span></a>
+	<div class="location-search-items"></div>
+</div>
+<div style="clear: both;"></div><br />
+
+<div class="green-button" data-search="true">Search</div><br /><br /><br />
+
+<div class="search-results">
+
+</div>
+
+<script type="text/javascript">
+	$(function() {
+		$('div[data-search="true"]').live('click', function() {
+			var position = $('#PositionID').val();
+			var radius = $('#Radius').val();
+			var latitude = $('input:hidden[name="Latitude"]').val();
+			var longitude = $('input:hidden[name="Longitude"]').val();
+			var city = $('input:hidden[name="LocationCity"]').val();
+			var area = $('input:hidden[name="LocationArea"]').val();
+			var country = $('input:hidden[name="LocationCountry"]').val();
+			if (!parseInt(radius) || isNaN(parseInt(radius))) {
+				radius = null;
+				latitude = null;
+				longitude = null;
+			} else if (!latitude.length || !longitude.length || isNaN(latitude) || isNaN(longitude)) {
+				radius = null;
+				latitude = null;
+				longitude = null;
+			}
+
+			// Make sure there's a position
+			if (!parseInt(position)) {
+				alert("You must enter a position to search for!");
+				return;
+			}
+
+			$('.search-results').html('<?=str_replace("'", "\\'", $this->partial('/partial/loading.phtml'))?><br />');
+			$.ajax({
+				type: 'POST',
+				dataType: 'json',
+				url: '<?=$this->basePath('/ajax?action=Accounts:searchByExperience&format=json')?>',
+				data: {
+					'position': position,
+					'radius': radius,
+					'latitude': latitude,
+					'longitude': longitude
+				},
+				success: function(json) {
+					var html = [];
+					html['premium'] = '';
+					html['regular'] = '';
+
+					// Loop through rows
+					var i;
+					for (i in json) {
+						var which = json[i].premium ? 'premium' : 'regular';
+
+						// Check the style
+						var style = "";
+						if (json[i].premium) {
+							style = "font-weight: bold;";
+						}
+
+						if (json[i].profile && json[i].profile.length > 0) {
+							html[which] += '<tr style="' + style + '" data-popup="searchexperience" data-url="<?=$this->basePath('/profile')?>/' + json[i].profile + '">';
+						} else {
+							html[which] += '<tr style="' + style + '" data-popup="searchexperience" data-url="<?=$this->basePath('/profile/id')?>/' + json[i].id + '">';
+						}
+
+						if (json[i].profile && json[i].profile.length > 0) {
+							html[which] += '<td><a href="<?=$this->basePath('/profile')?>/' + json[i].profile + '">' + json[i].name + '</a></td>';
+						} else {
+							html[which] += '<td><a href="<?=$this->basePath('/profile/id')?>/' + json[i].id + '">' + json[i].name + '</a></td>';
+						}
+
+						html[which] += '<td class="left">' + json[i].months + ' months</td>';
+						if (typeof(json[i].miles) !== "undefined" && json[i].miles != null) {
+							html[which] += '<td class="left">' + json[i].miles + ' miles away</td>';
+						}
+						html[which] += '<td class="arrow-right"><img src="<?=$this->basePath('/images/big-table-arrow-right.png')?>" style="height: 22px;" /></td>';
+
+						html[which] += "</tr>";
+					}
+
+					// Handle tables
+					var tables = '';
+					for (i in html) {
+						// Make sure we have results
+						if (html[i].length == 0) {
+							continue;
+						}
+
+						// See what the header should be
+						if (html['premium'].length > 0 && html['regular'].length > 0) {
+							if (i == "premium") {
+								tables += "<h3>Premium Users</h3>";
+							} else {
+								tables += "<h3>Regular Users</h3>";
+							}
+						}
+
+						tables += '<table class="big-table small">';
+						tables += "<thead>";
+						tables += "<tr>";
+						tables += "<th class='left'>Name</th>";
+						tables += "<th class='left'>Months experience as </th>";
+						if (latitude != null) {
+							if (country != 'US') {
+								tables += "<th class='left'>Proximity to " + country + "(" + city + ")</th>";
+							} else {
+								tables += "<th class='left'>Proximity to " + area + "(" + city + ")</th>";
+							}
+						}
+						tables += "<th>&nbsp;</th>";
+						tables += "</tr>";
+						tables += "</thead>";
+						tables += html[i];
+						tables += "</table><br /><br />";
+					}
+
+					$('.search-results').html(tables);
+				}
+			});
+		});
+
+		$('.location-clear-button').live('click', function() {
+			$('input:hidden[name="Latitude"]').val('');
+			$('input:hidden[name="Longitude"]').val('');
+			$('input:hidden[name="LocationCity"]').val('');
+			$('input:hidden[name="LocationArea"]').val('');
+			$('input:hidden[name="LocationPostal"]').val('');
+			$('input:hidden[name="LocationCountry"]').val('');
+			$('#location-search').val('');
+			$('.location-search-items').html('');
+			$('#Radius').val(30);
+		});
+
+		// Initialize location finder
+		Locations.Initialize({
+			latitude: $('input:hidden[name="Latitude"]')[0],
+			longitude: $('input:hidden[name="Longitude"]')[0],
+			city: $('input:hidden[name="LocationCity"]')[0],
+			area: $('input:hidden[name="LocationArea"]')[0],
+			postal: $('input:hidden[name="LocationPostal"]')[0],
+			country: $('input:hidden[name="LocationCountry"]')[0],
+			searchbox: $('.location-search')[0],
+			searchbutton: $('.location-search-button')[0],
+			items: $('.location-search-items')[0],
+			searchUrl: '<?=$this->basePath('/ajax?action=Locations:search')?>',
+			loading: '<?=str_replace("'", "\\'", $this->partial('/partial/loading.phtml'))?>',
+			accepted: '<?=$this->basePath('/images/check.png')?>'
+		});
+
+		// Autocompleter for the title field
+		$("#Position").autocomplete({
+			source: "<?=$this->basePath('/ajax?action=Positions:search&format=json&limit=15')?>",
+			minLength: 3,
+			select: function(event, ui) {
+				selectPosition(ui.item.id, ui.item.label);
+			},
+			open: function(){
+				$(this).autocomplete('widget').css('z-index', 100);
+				return false;
+			}
+		}).keyup(function() {
+			selectPosition('', '');
+		});
+
+		$('.radius-slider').slider({
+			min: 1,
+			max: 250,
+			value: 30,
+			slide: function(event, ui) {
+				$('#Radius').val(ui.value);
+				$('.slider-value.radius').html(ui.value + " mile(s)");
+			}
+		});
+
+		<?php if (strlen($model->universalPosition) > 0) { ?>
+			$('div[data-search="true"]').trigger('click');
+		<?php } ?>
+	});
+
+	// When a position is selected
+	function selectPosition(id, title, override) {
+		$('#PositionID').val(id);
+		if (override) {
+			$('#Position').val(title);
+		}
+
+		$('#selected-position-found span').html(title);
+		if (id > 0) {
+			$('#selected-position-found').show();
+		} else {
+			$('#selected-position-found').hide();
+		}
+	}
+
+	$('tr[data-url][data-popup] td a').live('click', function(e) {
+		e.preventDefault();
+	});
+</script>

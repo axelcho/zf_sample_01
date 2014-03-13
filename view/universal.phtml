@@ -1,0 +1,35 @@
+<?php /** @var Zend\View\Renderer\PhpRenderer $this */ ?>
+<?php /** @var Smu\ViewModel\Search\Universal $model */ ?>
+<?php $this->placeHolder('headline')->set('Universal Search'); ?>
+<div>
+<h3>Searching for:&nbsp <?= $model->search?> </h3>
+</div>
+
+<div class="search-results">
+<?php foreach ($model->result as $result) {?>
+	<div <?php
+	if (isset($result['table'])) {
+		echo "class = '".$result['table']."'";
+	}
+
+	if (isset($result['id'])) {
+		echo "id = '".$result['id']."'";
+	}
+	?>>
+		<a href = '<?=((isset($result['link']))? $result['link']: "#")?>'><?=$result['label']?></a>
+	</div>
+
+<?php }?>
+</div>
+<script type = 'text/javascript'>
+$(function(){
+	$('.Positions > a').click(function() {
+		var _id = $(this).parent().attr('id');
+		var _val = $(this).html();
+		$('<form id = "hidden" action="/search/experience" method="post" style="display: none;"><input type = "hidden" name="universalPositionID" id = "universalPositionID"><input type = "hidden" id = "universalPosition" name ="universalPosition"></form>').appendTo('body');			
+		$("#universalPositionID").val(_id);
+		$("#universalPosition").val(_val);			
+		$('#hidden').submit();		
+	});
+});
+</script>
