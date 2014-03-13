@@ -33,5 +33,5 @@ This sample does not show the whole route of the website, though.
 routes.config.php (shown partially here)
 SearchController.php
 
-These are the barebone php elements required for this project. But it needs javascript for most client-side actions. 
+These are the barebone php elements required for this project. It also needs javascript for most client-side actions. 
 The phtml template files with javascripts are in /view directory (again, most barebones only). 
